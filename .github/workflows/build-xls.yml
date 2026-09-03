@@ -12,13 +12,19 @@ jobs:
 
       - name: Pull Google XLS Codebase
         run: git clone https://github.com/google/xls.git
-
+      
+      - name: Patch Upstream Dockerfile
+        run: |
+          sed -i '/RUN if \[ "\$SKIP_TESTS" != "1" \]; then/,/fi/c\RUN bazel build --config=ci -c opt --local_ram_resources=5120 --local_cpu_resources=2 -- //xls/... ' ./xls/Dockerfile-ubuntu-22.04
+          echo "==== PATCHED DOCKERFILE PREVIEW ===="
+          tail -n 15 ./xls/Dockerfile-ubuntu-22.04
+          
       - name: Build XLS Container Image
         run: |
           docker build \
             ./xls \
             -f ./xls/Dockerfile-ubuntu-22.04 \
-            -t company-xls-dev:latest 
+            -t company-xls-dev:latest
 
       - name: Export Container to Archive File
         run: docker save company-xls-dev:latest -o xls-dev-image.tar
