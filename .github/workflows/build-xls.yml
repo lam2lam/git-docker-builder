@@ -15,7 +15,7 @@ jobs:
       
       - name: Patch Upstream Dockerfile
         run: |
-          sed -i 's,RUN if \[ "$SKIP_TESTS" != "1" \].*,RUN bazel build --config=ci -c opt --local_resources=memory=5120 --local_resources=cpu=2 //xls/...,' ./xls/Dockerfile-ubuntu-22.04
+          sed -i 's,RUN if \[ "$SKIP_TESTS" != "1" \].*,RUN bazel build -c opt --local_resources=memory=5120 --local_resources=cpu=2 //xls/...,' ./xls/Dockerfile-ubuntu-22.04
           echo "==== PATCHED DOCKERFILE PREVIEW ===="
           tail -n 15 ./xls/Dockerfile-ubuntu-22.04
           
