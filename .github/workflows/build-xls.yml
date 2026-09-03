@@ -18,8 +18,7 @@ jobs:
           docker build \
             ./xls \
             -f ./xls/Dockerfile-ubuntu-22.04 \
-            -t company-xls-dev:latest \
-            --build-arg SKIP_TESTS=1
+            -t company-xls-dev:latest 
 
       - name: Export Container to Archive File
         run: docker save company-xls-dev:latest -o xls-dev-image.tar
