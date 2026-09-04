@@ -20,7 +20,7 @@ jobs:
         # 切换到 root 用户以修改系统配置
         USER root
 
-        RUN apt update && apt install python3-pip -y
+        RUN apt update && apt install python3-pip git -y
 
         # 1. 修复 Ubuntu APT 软件源为华为内网镜像源 (适配 Ubuntu 24.04+ 及旧版本)
         RUN if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then \
@@ -33,9 +33,9 @@ jobs:
             fi
 
         # 2. 全局配置 Python Pip 华为内网源
-        RUN pip config --global set global.index http://mirrors.tools.huawei.com/pypi && \
-            pip config --global set global.index-url http://mirrors.tools.huawei.com/pypi/simple && \
-            pip config --global set global.trusted-host mirrors.tools.huawei.com
+        RUN pip3 config --global set global.index http://mirrors.tools.huawei.com/pypi && \
+            pip3 config --global set global.index-url http://mirrors.tools.huawei.com/pypi/simple && \
+            pip3 config --global set global.trusted-host mirrors.tools.huawei.com
 
         # 3. 写入公司内网环境所需的全局 .gitconfig (针对 root 和后续默认用户)
         RUN git config --system http.sslVerify false && \
