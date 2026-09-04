@@ -1,0 +1,47 @@
+name: Build and Package XLS Docker Image
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout local repository
+        uses: actions/checkout@v4
+
+      - name: Download Latest Pre-compiled XLS Binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "==== 获取 Google XLS 最新发布版 ===="
+          # 1. 自动获取最新 Release 的标签名
+          LATEST_TAG=$(gh repo view google/xls --json latestRelease --jq '.latestRelease.tagName')
+          echo "最新版本为: $LATEST_TAG"
+          
+          # 2. 下载对应的 linux-x64 二进制压缩包
+          gh release download $LATEST_TAG -R google/xls -p "*linux-x64.tar.gz" --dir .
+          
+          # 3. 解压二进制文件
+          mkdir -p ./xls-binaries
+          tar -xzvf xls-*.tar.gz -C ./xls-binaries --strip-components=1
+          
+          echo "==== 解压完成，检查二进制文件 ===="
+          ls -l ./xls-binaries
+
+      - name: Build XLS Container Image
+        run: |
+          # 4. 直接使用我们刚才写好的极简 Dockerfile 进打包（0编译，只有文件复制）
+          docker build \
+            . \
+            -f ./Dockerfile \
+            -t company-xls-dev:latest
+
+      - name: Export Container to Archive File
+        run: docker save company-xls-dev:latest -o xls-dev-image.tar
+
+      - name: Upload Workspace Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: xls-docker-image
+          path: xls-dev-image.tar
+          retention-days: 3
