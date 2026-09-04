@@ -1,4 +1,4 @@
-name: Build and Package XLS Docker Image
+name: download bins
 on:
   workflow_dispatch:
 
