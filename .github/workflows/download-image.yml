@@ -1,39 +1,71 @@
-name: Download and Package Docker Image
+name: Patch and Package Docker Image for Internal Network
 
 on:
-  workflow_dispatch: # 允许你在 GitHub 页面上手动点击运行
+  workflow_dispatch: # 允许在 GitHub 网页手动点击触发
 
 jobs:
-  download-image:
+  build-and-patch:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Pull and Tag Docker Image
+    - name: Create Custom Dockerfile for Patching
       run: |
-        IMAGE="ghcr.io/huawei-csl/rtlscout:slim"
-        LOCAL_TAG="rtlscout:latest"
-        
-        echo "Pulling image from GHCR..."
-        docker pull $IMAGE
-        
-        echo "Tagging image as $LOCAL_TAG..."
-        docker tag $IMAGE $LOCAL_TAG
+        cat << 'EOF' > Patch.dockerfile
+        # 以原始的 slim 镜像作为基础镜像
+        FROM ghcr.io/huawei-csl/rtlscout:slim
 
-    - name: Save Docker Image to Tarball
+        # 切换到 root 用户以修改系统配置
+        USER root
+
+        # 1. 修复 Ubuntu APT 软件源为华为内网镜像源 (适配 Ubuntu 24.04+ 及旧版本)
+        RUN if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then \
+              sed -i "s@http://.*archive.ubuntu.com@http://mirrors.tools.huawei.com@g" /etc/apt/sources.list.d/ubuntu.sources && \
+              sed -i "s@http://.*security.ubuntu.com@http://mirrors.tools.huawei.com@g" /etc/apt/sources.list.d/ubuntu.sources; \
+            fi && \
+            if [ -f /etc/apt/sources.list ]; then \
+              sed -i "s@http://.*archive.ubuntu.com@http://mirrors.tools.huawei.com@g" /etc/apt/sources.list && \
+              sed -i "s@http://.*security.ubuntu.com@http://mirrors.tools.huawei.com@g" /etc/apt/sources.list; \
+            fi
+
+        # 2. 全局配置 Python Pip 华为内网源
+        RUN pip config --global set global.index http://mirrors.tools.huawei.com/pypi && \
+            pip config --global set global.index-url http://mirrors.tools.huawei.com/pypi/simple && \
+            pip config --global set global.trusted-host mirrors.tools.huawei.com
+
+        # 3. 写入公司内网环境所需的全局 .gitconfig (针对 root 和后续默认用户)
+        RUN git config --system http.sslVerify false && \
+            git config --system http.proxy http://dvcmodel-10.hisilicon.com:3128 && \
+            git config --system http.postbuffer 1000000000 && \
+            git config --system https.proxy http://dvcmodel-10.hisilicon.com:3128 && \
+            git config --system url."http://github.com/".insteadof "git@github.com:"
+
+        # 4. 配置特定的用户信息
+        RUN git config --system user.email "steve.lam@huawei.com" && \
+            git config --system user.name "slam"
+
+        # 如果容器内有默认的非 root 用户，确保其也有权限访问这些配置（系统级配置已对所有用户生效）
+        EOF
+
+    - name: Build Patched Image
       run: |
-        echo "Saving image to tar file (this may take a few minutes, ~3GB)..."
-        docker save -o rtlscout_latest.tar rtlscout:latest
+        echo "Building and patching the docker image..."
+        # 编译时直接将新镜像标签定为脚本需要的 rtlscout:latest
+        docker build -t rtlscout:latest -f Patch.dockerfile .
+
+    - name: Save and Compress Docker Image
+      run: |
+        echo "Saving image to tarball (~3GB)..."
+        docker save -o rtlscout_patched.tar rtlscout:latest
         
-        # 压缩文件以加快后续下载速度
-        echo "Compressing tar file..."
-        gzip rtlscout_latest.tar
+        echo "Compressing with gzip..."
+        gzip rtlscout_patched.tar
 
     - name: Upload Image Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: rtlscout-docker-image
-        path: rtlscout_latest.tar.gz
-        retention-days: 1 # 节省空间，产物保留1天
+        name: rtlscout-huawei-patched-image
+        path: rtlscout_patched.tar.gz
+        retention-days: 1
