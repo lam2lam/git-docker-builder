@@ -1,0 +1,39 @@
+name: Download and Package Docker Image
+
+on:
+  workflow_dispatch: # 允许你在 GitHub 页面上手动点击运行
+
+jobs:
+  download-image:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Pull and Tag Docker Image
+      run: |
+        IMAGE="ghcr.io/huawei-csl/rtlscout:slim"
+        LOCAL_TAG="rtlscout:latest"
+        
+        echo "Pulling image from GHCR..."
+        docker pull $IMAGE
+        
+        echo "Tagging image as $LOCAL_TAG..."
+        docker tag $IMAGE $LOCAL_TAG
+
+    - name: Save Docker Image to Tarball
+      run: |
+        echo "Saving image to tar file (this may take a few minutes, ~3GB)..."
+        docker save -o rtlscout_latest.tar rtlscout:latest
+        
+        # 压缩文件以加快后续下载速度
+        echo "Compressing tar file..."
+        gzip rtlscout_latest.tar
+
+    - name: Upload Image Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: rtlscout-docker-image
+        path: rtlscout_latest.tar.gz
+        retention-days: 1 # 节省空间，产物保留1天
