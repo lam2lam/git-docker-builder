@@ -47,6 +47,10 @@ jobs:
         # 4. 配置特定的用户信息
         RUN git config --system user.email "steve.lam@huawei.com" && \
             git config --system user.name "slam"
+            
+        # 5. 全局配置 uv 华为内网源
+        ENV UV_INDEX_URL="http://mirrors.tools.huawei.com/pypi/simple"
+        ENV UV_INSECURE_HTTP=true
 
         # 如果容器内有默认的非 root 用户，确保其也有权限访问这些配置（系统级配置已对所有用户生效）
         EOF
