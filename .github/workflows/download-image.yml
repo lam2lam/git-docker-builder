@@ -20,8 +20,8 @@ jobs:
         # 切换到 root 用户以修改系统配置
         USER root
 
-        RUN apt update && apt install python3-pip git -y
-
+        RUN apt update && apt install python3-pip git vim -y
+        
         # 1. 修复 Ubuntu APT 软件源为华为内网镜像源 (适配 Ubuntu 24.04+ 及旧版本)
         RUN if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then \
               sed -i "s@http://.*archive.ubuntu.com@http://mirrors.tools.huawei.com@g" /etc/apt/sources.list.d/ubuntu.sources && \
